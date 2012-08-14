@@ -5,7 +5,8 @@ module AssignableValues
 
         def initialize(*args)
           super
-          define_humanized_method
+          define_humanized_value_method
+          define_humanized_values_method
         end
 
         def humanize_value(value)
@@ -14,12 +15,26 @@ module AssignableValues
               @hardcoded_humanizations[value]
             else
               dictionary_scope = "assignable_values.#{model.name.underscore}.#{property}"
-              I18n.t(value.to_s, :scope => dictionary_scope, :default => value.humanize)
+              I18n.t(value, :scope => dictionary_scope, :default => default_humanization_for_value(value))
             end
           end
         end
 
+        def humanized_assignable_values(record)
+          assignable_values(record).collect do |value|
+            HumanizedValue.new(value, humanize_value(value))
+          end
+        end
+
         private
+
+        def default_humanization_for_value(value)
+          if value.is_a?(String)
+            value.humanize
+          else
+            value.to_s
+          end
+        end
 
         def parse_values(values)
           if values.is_a?(Hash)
@@ -30,7 +45,7 @@ module AssignableValues
           end
         end
 
-        def define_humanized_method
+        def define_humanized_value_method
           restriction = self
           enhance_model do
             define_method "humanized_#{restriction.property}" do |*args|
@@ -41,12 +56,23 @@ module AssignableValues
           end
         end
 
+        def define_humanized_values_method
+          restriction = self
+          enhance_model do
+            define_method "humanized_assignable_#{restriction.property.to_s.pluralize}" do
+              restriction.humanized_assignable_values(self)
+            end
+          end
+        end
+
         def decorate_values(values)
           restriction = self
           values.collect do |value|
-            value = value.dup
-            value.singleton_class.send(:define_method, :humanized) do
-              restriction.humanize_value(value)
+            if value.is_a?(String)
+              value = value.dup
+              value.singleton_class.send(:define_method, :humanized) do
+                restriction.humanize_value(value)
+              end
             end
             value
           end

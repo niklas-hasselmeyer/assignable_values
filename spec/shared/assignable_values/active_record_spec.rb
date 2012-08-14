@@ -379,13 +379,40 @@ describe AssignableValues::ActiveRecord do
 
       context 'humanization' do
 
-        it "should define a method #humanized on strings in that list, which return up the value's' translation" do
+        context 'legacy methods for API compatibility' do
+
+          it "should define a method #humanized on assignable string values, which return up the value's' translation" do
+            klass = Song.disposable_copy do
+              assignable_values_for :genre do
+                %w[pop rock]
+              end
+            end
+            klass.new.assignable_genres.collect(&:humanized).should == ['Pop music', 'Rock music']
+          end
+
+          it 'should not define a method #humanized on values that are not strings' do
+            klass = Song.disposable_copy do
+              assignable_values_for :year do
+                [1999, 2000, 2001]
+              end
+            end
+            years = klass.new.assignable_years
+            years.should == [1999, 2000, 2001]
+            years.first.should_not respond_to(:humanized)
+          end
+
+        end
+
+        it 'should define a method that return pairs of values and their humanization' do
           klass = Song.disposable_copy do
             assignable_values_for :genre do
               %w[pop rock]
             end
           end
-          klass.new.assignable_genres.collect(&:humanized).should == ['Pop music', 'Rock music']
+          genres = klass.new.humanized_assignable_genres
+          genres.collect(&:value).should == ['pop', 'rock']
+          genres.collect(&:humanized).should == ['Pop music', 'Rock music']
+          genres.collect(&:to_s).should == ['Pop music', 'Rock music']
         end
 
         it 'should use String#humanize as a default translation' do
@@ -394,7 +421,7 @@ describe AssignableValues::ActiveRecord do
               %w[electronic]
             end
           end
-          klass.new.assignable_genres.collect(&:humanized).should == ['Electronic']
+          klass.new.humanized_assignable_genres.collect(&:humanized).should == ['Electronic']
         end
 
         it 'should allow to define humanizations for values that are not strings' do
@@ -403,7 +430,8 @@ describe AssignableValues::ActiveRecord do
               [1977, 1980, 1983]
             end
           end
-          years = klass.new.assignable_years
+          years = klass.new.humanized_assignable_years
+          years.collect(&:value).should == [1977, 1980, 1983]
           years.collect(&:humanized).should == ['The year a new hope was born', 'The year the Empire stroke back', 'The year the Jedi returned']
         end
 
@@ -413,7 +441,7 @@ describe AssignableValues::ActiveRecord do
               { 'pop' => 'Pop music', 'rock' => 'Rock music' }
             end
           end
-          klass.new.assignable_genres.collect(&:humanized).should =~ ['Pop music', 'Rock music']
+          klass.new.humanized_assignable_genres.collect(&:humanized).should =~ ['Pop music', 'Rock music']
         end
 
         it 'should properly look up humanizations for namespaced models' do
@@ -422,7 +450,7 @@ describe AssignableValues::ActiveRecord do
               [1977, 1980, 1983]
             end
           end
-          years = klass.new.assignable_years
+          years = klass.new.humanized_assignable_years
           years.collect(&:humanized).should == ['The year a new hope was born', 'The year the Empire stroke back', 'The year the Jedi returned']
         end
 
@@ -474,26 +502,5 @@ describe AssignableValues::ActiveRecord do
     end
 
   end
-
-  #describe '.authorize_values_for' do
-  #
-  #  it 'should be a shortcut for .assignable_values_for :attribute, :through => :power' do
-  #    @klass = Song.disposable_copy
-  #    @klass.should_receive(:assignable_values_for).with(:attribute, :option => 'option', :through => :power)
-  #    @klass.class_eval do
-  #      authorize_values_for :attribute, :option => 'option'
-  #    end
-  #  end
-  #
-  #  it 'should generate a getter and setter for a @power field' do
-  #    @klass = Song.disposable_copy do
-  #      authorize_values_for :attribute
-  #    end
-  #    song = @klass.new
-  #    song.should respond_to(:power)
-  #    song.should respond_to(:power=)
-  #  end
-  #
-  #end
 
 end
