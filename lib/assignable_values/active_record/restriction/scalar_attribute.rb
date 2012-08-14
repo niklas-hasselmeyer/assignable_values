@@ -8,13 +8,13 @@ module AssignableValues
           define_humanized_method
         end
 
-        def humanize_string_value(value)
+        def humanize_value(value)
           if value.present?
             if @hardcoded_humanizations
               @hardcoded_humanizations[value]
             else
-              dictionary_key = "assignable_values.#{model.name.underscore}.#{property}.#{value}"
-              I18n.t(dictionary_key, :default => value.humanize)
+              dictionary_scope = "assignable_values.#{model.name.underscore}.#{property}"
+              I18n.t(value.to_s, :scope => dictionary_scope, :default => value.humanize)
             end
           end
         end
@@ -36,7 +36,7 @@ module AssignableValues
             define_method "humanized_#{restriction.property}" do |*args|
               given_value = args[0]
               value = given_value || send(restriction.property)
-              restriction.humanize_string_value(value)
+              restriction.humanize_value(value)
             end
           end
         end
@@ -44,11 +44,9 @@ module AssignableValues
         def decorate_values(values)
           restriction = self
           values.collect do |value|
-            if value.is_a?(String)
-              value = value.dup
-              value.singleton_class.send(:define_method, :humanized) do
-                restriction.humanize_string_value(value)
-              end
+            value = value.dup
+            value.singleton_class.send(:define_method, :humanized) do
+              restriction.humanize_value(value)
             end
             value
           end
