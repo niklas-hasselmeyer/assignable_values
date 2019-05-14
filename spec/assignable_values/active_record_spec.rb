@@ -1,6 +1,14 @@
 require 'spec_helper'
 require 'ostruct'
 
+def save_without_validation(record)
+  if ActiveRecord::VERSION::MAJOR < 3
+    record.save(false)
+  else
+    record.save(:validate => false)
+  end
+end
+
 describe AssignableValues::ActiveRecord do
 
   describe '.assignable_values' do
@@ -304,11 +312,7 @@ describe AssignableValues::ActiveRecord do
         it 'should allow a subset of previously saved values even if that value is no longer allowed' do
           record = @klass.create!(:multi_genres => ['pop'])
           record.multi_genres = ['pretend', 'previously', 'valid', 'value']
-          if ActiveRecord::VERSION::MAJOR < 3
-            record.save(false)
-          else
-            record.save(:validate => false) # update without validations for the sake of this test
-          end
+          save_without_validation(record) # update without validation for the sake of this test
           record.reload.should be_valid
           record.multi_genres = ['valid', 'previously', 'pop']
           record.should be_valid
@@ -766,7 +770,8 @@ describe AssignableValues::ActiveRecord do
         humanized_genres.collect(&:humanized).should == ['Ballad', 'Pop music', 'Rock music']
         humanized_genres.collect(&:to_s).should == ['Ballad', 'Pop music', 'Rock music']
 
-        klass.update_all(:multi_genres => %w[ballad classic]) # update without validation for the sake of this test
+        record.multi_genres = %w[ballad classic]
+        save_without_validation(record) # update without validation for the sake of this test
         record.reload.multi_genres.should == %w[ballad classic]
 
         humanized_multi_genres = record.humanized_assignable_multi_genres
@@ -826,7 +831,8 @@ describe AssignableValues::ActiveRecord do
         humanized_genres.collect(&:humanized).should == ['Pop music', 'Rock music']
         humanized_genres.collect(&:to_s).should == ['Pop music', 'Rock music']
 
-        klass.update_all(:multi_genres => %w[ballad classic]) # update without validation for the sake of this test
+        record.multi_genres = %w[ballad classic]
+        save_without_validation(record) # update without validation for the sake of this test
         record.reload.multi_genres.should == %w[ballad classic]
 
         humanized_multi_genres = record.humanized_assignable_multi_genres(:include_old_value => false)
